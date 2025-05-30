@@ -1,11 +1,6 @@
 services:
   - type: web
-    name: zomato-scraper
+    name: your-service-name
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python app.py
-    envVars:
-      - key: FLASK_ENV
-        value: production
-    build:
-      dockerfilePath: Dockerfile
+    buildCommand: ./build.sh && pip install -r requirements.txt
+    startCommand: python your_script.py
