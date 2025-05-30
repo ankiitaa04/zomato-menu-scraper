@@ -4,6 +4,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+import shutil
 import re
 import json
 from html import unescape
@@ -54,12 +55,16 @@ def get_menu(url):
 
     try:
         chrome_options = Options()
-        chrome_options.add_argument("--headless")  # comment this if you want to see browser window
+        chrome_options.add_argument("--headless")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
 
-        # Specify Chrome binary location (your installed chrome.exe)
-        chrome_options.binary_location = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+        # Automatically detect the binary location of Chrome or Chromium
+        chromium_path = shutil.which("chromium-browser") or shutil.which("chromium") or shutil.which("google-chrome")
+        if chromium_path:
+            chrome_options.binary_location = chromium_path
+        else:
+            print("⚠️ Chromium not found in environment.")
 
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
