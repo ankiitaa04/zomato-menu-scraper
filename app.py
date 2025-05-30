@@ -1,19 +1,15 @@
 from flask import Flask, render_template, request
-import requests
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 import re
 import json
 from html import unescape
 import time
-import random
+import os
 
 app = Flask(__name__)
-
-user_agents = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Safari/605.1.15',
-    'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36',
-]
 
 def extract_needed_data(json_data):
     if isinstance(json_data, str):
@@ -55,37 +51,39 @@ def get_menu(url):
 
     print(f"DEBUG: Fetching URL -> {url}")
 
-    headers = {'User-Agent': random.choice(user_agents)}
-
-    time.sleep(3)  # simple rate limiting
-
     try:
-        response = requests.get(url, headers=headers, timeout=15)
-        response.raise_for_status()
-    except requests.RequestException as e:
-        return None, None, f"Error fetching page: {e}"
+        # Setup Selenium
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
 
-    print(f"DEBUG: Response snippet -> {response.text[:200]}")
+        driver = webdriver.Chrome(ChromeDriverManager().install(), options=chrome_options)
+        driver.get(url)
+        time.sleep(5)  # wait for content to load
 
-    soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        driver.quit()
 
-    scripts = soup.find_all('script')
-    for script in scripts:
-        if 'window.__PRELOADED_STATE__' in script.text:
-            match = re.search(r'window\.__PRELOADED_STATE__ = JSON\.parse\((.+?)\);', script.text)
-            if match:
-                try:
-                    escaped_json = match.group(1)
-                    decoded_json_str = unescape(escaped_json)
-                    parsed_json = json.loads(decoded_json_str)
-                    preloaded_state = json.loads(parsed_json)
+        scripts = soup.find_all('script')
+        for script in scripts:
+            if 'window.__PRELOADED_STATE__' in script.text:
+                match = re.search(r'window\.__PRELOADED_STATE__ = JSON\.parse\((.+?)\);', script.text)
+                if match:
+                    try:
+                        escaped_json = match.group(1)
+                        decoded_json_str = unescape(escaped_json)
+                        parsed_json = json.loads(decoded_json_str)
+                        preloaded_state = json.loads(parsed_json)
 
-                    menu_data, restaurant_name = extract_needed_data(preloaded_state)
-                    return menu_data, restaurant_name, None
-                except Exception as e:
-                    return None, None, f"Error parsing embedded JSON: {e}"
+                        menu_data, restaurant_name = extract_needed_data(preloaded_state)
+                        return menu_data, restaurant_name, None
+                    except Exception as e:
+                        return None, None, f"Error parsing embedded JSON: {e}"
 
-    return None, None, "No embedded menu data found on this page."
+        return None, None, "No embedded menu data found on this page."
+    except Exception as e:
+        return None, None, f"Selenium error: {e}"
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -102,8 +100,6 @@ def index():
 
     return render_template("index.html", error=error, menu_items=menu_items, restaurant_name=restaurant_name)
 
-import os
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # Default to 5000 for local
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
