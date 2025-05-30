@@ -54,11 +54,12 @@ def get_menu(url):
 
     try:
         chrome_options = Options()
-        # Specify your Chrome binary location here:
-        chrome_options.binary_location = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
+
+        # Add this line with your chrome.exe path:
+        chrome_options.binary_location = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
