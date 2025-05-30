@@ -54,11 +54,11 @@ def get_menu(url):
 
     try:
         chrome_options = Options()
-        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--headless")  # comment this if you want to see browser window
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
 
-        # Add this line with your chrome.exe path:
+        # Specify Chrome binary location (your installed chrome.exe)
         chrome_options.binary_location = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 
         service = Service(ChromeDriverManager().install())
