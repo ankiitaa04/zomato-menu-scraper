@@ -53,26 +53,28 @@ def get_menu(url):
 
     print(f"DEBUG: Fetching URL -> {url}")
 
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+
+    # Auto-detect chromium/chrome binary
+    chromium_path = shutil.which("chromium-browser") or shutil.which("chromium") or shutil.which("google-chrome")
+    if chromium_path:
+        chrome_options.binary_location = chromium_path
+        print(f"DEBUG: Chromium binary found at: {chromium_path}")
+    else:
+        print("⚠️ Chromium not found in environment.")
+
+    service = Service(ChromeDriverManager().install())
+    driver = None
     try:
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-
-        # Automatically detect the binary location of Chrome or Chromium
-        chromium_path = shutil.which("chromium-browser") or shutil.which("chromium") or shutil.which("google-chrome")
-        if chromium_path:
-            chrome_options.binary_location = chromium_path
-        else:
-            print("⚠️ Chromium not found in environment.")
-
-        service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
         driver.get(url)
         time.sleep(5)  # wait for page to load
 
         soup = BeautifulSoup(driver.page_source, 'html.parser')
-        driver.quit()
 
         scripts = soup.find_all('script')
         for script in scripts:
@@ -93,6 +95,9 @@ def get_menu(url):
         return None, None, "No embedded menu data found on this page."
     except Exception as e:
         return None, None, f"Selenium error: {e}"
+    finally:
+        if driver:
+            driver.quit()
 
 @app.route("/", methods=["GET", "POST"])
 def index():
